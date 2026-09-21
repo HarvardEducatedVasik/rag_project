@@ -1,32 +1,66 @@
 import string
-
+import math
 
 from .search_utils import *
 
-
-
+inverted_index = InvertedIndex()
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
-    results = []
-    stopwords = load_stopwords()
-    for movie in movies:
+    try :
+        results = []
         query_tokens = tokenize_text(query)
-        title_tokens = tokenize_text(movie["title"])
-        if has_matching_token(query_tokens, title_tokens):
-            results.append(movie)
-            if len(results) >= limit:
-                break
+        inverted_index.load()
+        for token in query_tokens:
+            for movie_id in inverted_index.get_documents(token):
+                results.append(inverted_index.docmap[movie_id])
+                if len(results) >= limit:
+                    return results
 
-    return results
-
-def build_command(term : str):
-    inverted_index = InvertedIndex()
+        return results
+    except Exception as e:
+        print(e)
+def build_command():
     inverted_index.build()
-    docs = inverted_index.get_documents(term)
     inverted_index.save()
-    return docs
 
 
+def tf_command(doc_id : int, term : str):
+    
+    return inverted_index.term_frequencies[doc_id][term]
+
+
+def idf_command (term : str):
+    try:
+        inverted_index.load()
+        token = tokenize_term(term)
+        total_doc_count = len(inverted_index.docmap)
+        term_match_doc_count = 0
+        for doc_id in inverted_index.docmap.keys():
+            try :
+                if (tf_command(doc_id, token))>=1:
+                    term_match_doc_count += 1            
+            except Exception as e:
+                print(e)
+        return (math.log((total_doc_count + 1) / (term_match_doc_count + 1)))
+    except Exception as e:
+        print(e)
+
+def tfidf_command( doc_id : int ,term : str ):
+    try:
+        inverted_index.load()
+        token = tokenize_term(term)
+        print(doc_id)
+        idf = idf_command(token)
+        print(f"idf : {idf}")
+        tf = inverted_index.term_frequencies[doc_id][token]
+        print("zmrdel")
+        print(f"tf : {tf}")
+        if idf == None:
+            idf = 0
+        return tf * float(idf)
+    except Exception as e:
+        print(e)
+    
 
 
 

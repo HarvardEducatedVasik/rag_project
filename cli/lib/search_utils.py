@@ -3,6 +3,7 @@ import os
 import pickle
 import string
 from typing import Any, TypedDict
+from collections import Counter
 from nltk.stem import PorterStemmer
 
 stemmer = PorterStemmer()
@@ -62,6 +63,13 @@ def load_movies() -> list[Movie]:
 
 movies = load_movies()
 
+def tokenize_term(term : str):
+    token = tokenize_text(term)
+    if len(token) != 1:
+        raise Exception("Term cannot be tokenized into one token")
+    return token[0]
+
+
 def tokenize_text(text: str) -> list[str]:
     text = preprocess_text(text)
     tokens = text.split()
@@ -84,12 +92,18 @@ class InvertedIndex():
     def __init__(self):
         self.index : dict[str, set[int]] = {}
         self.docmap : dict[int, Movie] = {}
+        self.term_frequencies : dict[int, Counter] = {}
     def __add_document(self, doc_id, text):
-        tokens = tokenize_text(text)
+        tokens = tokenize_text(text) 
         for token in tokens:
             if token not in self.index:
                 self.index[token] = set()
+            if doc_id not in self.term_frequencies:
+                self.term_frequencies[doc_id] = Counter()
+            self.term_frequencies[doc_id][token]+= 1
             self.index[token].add(doc_id)
+
+
     def get_documents(self, term):
         final_term = tokenize_text(term)[0]
         ids = self.index.get(final_term, set())
@@ -106,6 +120,26 @@ class InvertedIndex():
             pickle.dump(self.index, f)
         with open("cache/docmap.pkl", "wb") as f:
             pickle.dump(self.docmap, f)
+        with open("cache/term_frequencies.pkl", "wb") as f:
+            pickle.dump(self.term_frequencies, f)
+    def load(self):
+        try :
+            with open ("cache/index.pkl", "rb") as f:
+                self.index = pickle.load(f)
+            with open("cache/docmap.pkl", "rb") as f:
+                self.docmap = pickle.load(f)
+            with open("cache/term_frequencies.pkl", "rb") as f:
+                self.term_frequencies = pickle.load(f)    
+        except Exception as e:
+            raise Exception("files not found + " , e)
+    def get_tf(self, doc_id, term):
+        try :
+            token = tokenize_term(term)
+            return self.term_frequencies[token]
+        except Exception as e:
+            print(e)
+        
+
 
 
 class SearchResult(TypedDict):
